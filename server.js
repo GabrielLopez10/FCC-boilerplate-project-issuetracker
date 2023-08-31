@@ -4,19 +4,73 @@ const express     = require('express');
 const bodyParser  = require('body-parser');
 const expect      = require('chai').expect;
 const cors        = require('cors');
+const mongoose    = require('mongoose');
 require('dotenv').config();
 
 const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
 const runner            = require('./test-runner');
 
+db().catch(err => console.log(err));
+
+async function db() {
+  await mongoose.connect(process.env.MONGO_URI);
+  console.log('connected to DB')
+}
+
+const issueSchema = new mongoose.Schema({
+  project: {
+    type: String,
+    default: 'apitest'
+  },
+  issue_title: {
+    type: String,
+    required: true,
+  },
+  issue_text: {
+    type: String,
+    required: true,
+  },
+  created_on: {
+    type: Date,
+    default: new Date()
+  },
+  updated_on: {
+    type: Date,
+    default: new Date()
+  },
+  created_by: {
+    type: String,
+    required: true
+  },
+  assigned_to: {
+    type: String,
+    default: ''
+  },
+  open: {
+    type: Boolean,
+    default: true,
+  },
+  status_text: {
+    type: String,
+    default: ''
+  }
+});
+const Issues = mongoose.model('Issues', issueSchema);
+
+Issues.create({_id: '63657911922d375e25ad1b85', project: 'apitest', issue_title: 'test', issue_text: 'test', created_by: 'test'})
+    .then(result => {
+        console.log(result);
+    })
+    .catch(error => {
+        console.log(error);
+    });
+
 let app = express();
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
 app.use(cors({origin: '*'})); //For FCC testing purposes only
-
-
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -36,9 +90,9 @@ app.route('/')
 //For FCC testing purposes
 fccTestingRoutes(app);
 
-//Routing for API 
-apiRoutes(app);  
-    
+//Routing for API
+apiRoutes(app, Issues);
+
 //404 Not Found Middleware
 app.use(function(req, res, next) {
   res.status(404)
